@@ -30,7 +30,7 @@ public class WifiNetworkScanner : Object {
 			);
 
 			if (exit_status == 512) {
-				stdout.printf("ERROR: not enough privileges, please run as root");
+				stderr.printf("ERROR: not enough privileges, please run as root");
 				return 1;
 			} else {
 				/* Clean up for empty elements */
@@ -63,7 +63,6 @@ public class WifiNetworkScanner : Object {
 							net_param
 						)) {
 							string[] new_net = net_param.split("=");
-							//stdout.printf ("%s %s\n", new_net[0], new_net[1]);
 							var hash = new HashTable<string, string> (str_hash, str_equal);
 							hash.insert(new_net[0], new_net[1]);
 							network_list.append (hash);
