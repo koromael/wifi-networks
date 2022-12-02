@@ -4,17 +4,18 @@
  * Exit code (0: success, 1:failure)
  */
 
-using Gee;
+using GLib;
 
 public class WifiNetworkScanner : Object {
-	public ArrayList<string> file_list;
+	public GLib.List<HashTable> network_list;
 
 	public WifiNetworkScanner () {
-		this.file_list = new ArrayList<string>();
+		this.network_list = new GLib.List<HashTable>();
 	}
 
 	/* Check wireless network configuration files */
 	public int check_network_manager_config_files () {
+		var file_list = new GLib.List<string>();
 		string network_manager_config_location = "/etc/NetworkManager/system-connections";
 
 		try {
@@ -35,7 +36,7 @@ public class WifiNetworkScanner : Object {
 				/* Clean up for empty elements */
 				foreach (string filename in standard_output.split ("\n")) {
 					if (filename != "") {
-						file_list.add(filename);
+						file_list.append(filename);
 					}
 				}
 			}
@@ -54,7 +55,20 @@ public class WifiNetworkScanner : Object {
 
 				/* filter by wireless networks*/
 				if ("type=wifi" in file_contents) {
-					stdout.printf ("%s \n---\n%s", filename, file_contents);
+
+					/* Filter by the necessary fields */
+					foreach (string net_param in file_contents.split ("\n")) {
+						if (Regex.match_simple (
+							"(ssid|auth-alg|key-mgmt|psk)",
+							net_param
+						)) {
+							string[] new_net = net_param.split("=");
+							//stdout.printf ("%s %s\n", new_net[0], new_net[1]);
+							var hash = new HashTable<string, string> (str_hash, str_equal);
+							hash.insert(new_net[0], new_net[1]);
+							network_list.append (hash);
+						}
+					}
 				}
 			} catch (FileError e) {
 				stderr.printf ("%s\n", e.message);
@@ -70,6 +84,12 @@ int main () {
 
 	if (scanner.check_network_manager_config_files () == 1) {
 		return 1;
+	} else {
+		foreach (HashTable<string,string> network in scanner.network_list) {
+			foreach (string key in network.get_keys()) {
+				stdout.printf ("%s => %s \n", key, network.lookup(key));
+			}
+		}
 	}
 
 	return 0;
