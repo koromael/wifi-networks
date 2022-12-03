@@ -175,7 +175,7 @@ int main () {
 	} else {
 		stdout.printf ("Found wireless network SSIDs:\n");
 		foreach (string ssid in scanner.ssid_list) {
-			stdout.printf("%s\n", ssid);
+			stdout.printf("\t%s\n", ssid);
 		}
 	}
 
