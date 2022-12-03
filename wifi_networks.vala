@@ -14,6 +14,7 @@ using GLib;
 
 public class WifiNetworkScanner : Object {
 	public GLib.List<HashTable> network_list;
+	public string wifi_interface = "";
 	public GLib.List<string> ssid_list = new GLib.List<string>();
 
 	public WifiNetworkScanner () {
@@ -95,9 +96,9 @@ public class WifiNetworkScanner : Object {
 	 * Add findings to global network_list.
 	 */
 	public int network_manager_active_scan () {
-		string wifi_interface = "";
 
 		try {
+			stdout.printf ("Scanning for wireless network interfaces...");
 			/* Find wireless interfaces with `iw` */
 			string standard_output, standard_error;
 			int exit_status;
@@ -122,7 +123,11 @@ public class WifiNetworkScanner : Object {
 		if (wifi_interface == "") {
 			stderr.printf("Error: No wireless network interfaces were found.");
 			return 1;
+		} else {
+			stdout.printf("Found.\n");
 		}
+
+		stdout.printf ("Scanning for available access points...");
 
 		try {
 			string standard_output, standard_error;
@@ -133,6 +138,8 @@ public class WifiNetworkScanner : Object {
 				out standard_error,
 				out exit_status
 			);
+
+			stdout.printf ("Found.\n");
 
 			foreach (string iw_param in standard_output.split ("\n")) {
 				if ("SSID" in iw_param) {
@@ -151,22 +158,46 @@ public class WifiNetworkScanner : Object {
 int main () {
 	WifiNetworkScanner scanner = new WifiNetworkScanner ();
 
+	/* Search NetworkManager files, filter by wireless networks. */
 	if (scanner.check_network_manager_config_files () == 1) {
 		return 1;
-	} else {
+	}/* else {
 		foreach (HashTable<string,string> network in scanner.network_list) {
 			foreach (string key in network.get_keys()) {
 				stdout.printf ("%s => %s \n", key, network.lookup(key));
 			}
 		}
-	}
+	}*/
 
+	/* Perform an active scan for available wireless networks*/
 	if (scanner.network_manager_active_scan () != 0) {
 		stderr.printf ("Error: No wireless networks are available.");
 	} else {
 		stdout.printf ("Found wireless network SSIDs:\n");
 		foreach (string ssid in scanner.ssid_list) {
 			stdout.printf("%s\n", ssid);
+		}
+	}
+
+	/* Match available and known networks, connect to them. */
+	foreach (string ssid in scanner.ssid_list) {
+		foreach (HashTable<string,string> known_network in scanner.network_list) {
+			if (ssid == known_network.lookup("ssid")) {
+				//stdout.printf ("known SSID: %s\n", ssid);
+				string standard_output, standard_error;
+				int exit_status;
+				try {
+					Process.spawn_command_line_sync (
+						"nmcli connection up " + ssid,
+						out standard_output,
+						out standard_error,
+						out exit_status
+					);
+					stdout.printf("CONNECTED.");
+				} catch (SpawnError e) {
+					stderr.printf("%s\n", e.message);
+				}
+			}
 		}
 	}
 
