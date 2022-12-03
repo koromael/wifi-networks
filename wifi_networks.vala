@@ -193,10 +193,32 @@ int main () {
 						out standard_error,
 						out exit_status
 					);
-					stdout.printf("CONNECTED.");
 				} catch (SpawnError e) {
 					stderr.printf("%s\n", e.message);
+					return 1;
 				}
+
+				/* Once connected, locate the default gateway */
+				try {
+					Process.spawn_command_line_sync (
+						"ip route",
+						out standard_output,
+						out standard_error,
+						out exit_status
+					);
+
+					foreach (string route in standard_output.split ("\n")) {
+						if ("default" in route) {
+							string gateway = route.split(" ")[2];
+							stdout.printf("SSID: %s - Default Gateway: %s", ssid, gateway);
+						}
+					}
+
+				} catch (SpawnError e) {
+					stderr.printf("%s\n", e.message);
+					return 1;
+				}
+				
 			}
 		}
 	}
